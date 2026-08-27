@@ -206,9 +206,9 @@ sqldelight {
     databases {
         create("MorseCodeDatabase") {
             packageName.set("net.morsecode.storage.db")
-            // The schema uses `ON CONFLICT ... DO UPDATE` upserts (SQLite 3.24+),
-            // so the default 3.18 dialect rejects them. Pin the 3.25 dialect.
-            dialect("app.cash.sqldelight:sqlite-3.25-dialect:${libs.versions.sqldelight.get()}")
+            // The schema sticks to the default sqlite-3.18 dialect (no upserts,
+            // no window functions) so no extra `-dialect` artifact is required;
+            // conflict handling uses INSERT OR REPLACE / INSERT OR IGNORE.
             // chat_message is created here in Phase 3 alongside transfer_state,
             // as the phase list requires — not bolted on later in Phase 13.
         }

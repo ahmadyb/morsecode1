@@ -24,14 +24,10 @@ CREATE INDEX idx_trusted_device_last_seen ON trusted_device(last_seen_at DESC);
 isTrusted:
 SELECT COUNT(*) FROM trusted_device WHERE device_id = ?;
 
+-- INSERT OR REPLACE keeps us on the default sqlite-3.18 dialect.
 trust:
-INSERT INTO trusted_device(device_id, device_name, device_type, last_seen_ip, trusted_at, last_seen_at)
-VALUES (?, ?, ?, ?, ?, ?)
-ON CONFLICT(device_id) DO UPDATE SET
-  device_name = excluded.device_name,
-  device_type = excluded.device_type,
-  last_seen_ip = excluded.last_seen_ip,
-  last_seen_at = excluded.last_seen_at;
+INSERT OR REPLACE INTO trusted_device(device_id, device_name, device_type, last_seen_ip, trusted_at, last_seen_at)
+VALUES (?, ?, ?, ?, ?, ?);
 
 -- "Forget" action in Settings -> Manage trusted devices (Section 9).
 forget:

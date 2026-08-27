@@ -32,21 +32,13 @@ CREATE INDEX idx_transfer_state_status ON transfer_state(status);
 CREATE INDEX idx_transfer_state_peer ON transfer_state(peer_device_id, direction);
 CREATE INDEX idx_transfer_state_batch ON transfer_state(batch_id);
 
+-- INSERT OR REPLACE (not ON CONFLICT DO UPDATE) keeps the schema on the
+-- default sqlite-3.18 dialect, avoiding an extra `-dialect` dependency.
 upsert:
-INSERT INTO transfer_state(
+INSERT OR REPLACE INTO transfer_state(
   transfer_id, file_id, batch_id, peer_device_id, filename,
   total_chunks, verified_chunks_bitmap, sha256_full, status, direction, updated_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-ON CONFLICT(transfer_id, file_id) DO UPDATE SET
-  batch_id = excluded.batch_id,
-  peer_device_id = excluded.peer_device_id,
-  filename = excluded.filename,
-  total_chunks = excluded.total_chunks,
-  verified_chunks_bitmap = excluded.verified_chunks_bitmap,
-  sha256_full = excluded.sha256_full,
-  status = excluded.status,
-  direction = excluded.direction,
-  updated_at = excluded.updated_at;
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 selectById:
 SELECT * FROM transfer_state
