@@ -47,7 +47,8 @@ actual fun VideoPlayer(
 /** Headless VLCJ audio controller (Section F.3, Desktop actual). */
 class AudioPlaybackControllerDesktop : AudioPlaybackController {
     private val factory = MediaPlayerFactory()
-    private val player = factory.mediaPlayers().newAudioPlayer()
+    // A plain media player with no video surface plays audio only.
+    private val player = factory.mediaPlayers().newMediaPlayer()
 
     private val _isPlaying = MutableStateFlow(false)
     override val isPlaying: StateFlow<Boolean> = _isPlaying.asStateFlow()

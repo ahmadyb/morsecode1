@@ -39,7 +39,9 @@ class FileChunkSource(
         crypto.sha256(File(path).readBytes())
     }
 
-    override suspend fun close() = withContext(Dispatchers.IO) { runCatching { file.close() } }
+    override suspend fun close() {
+        withContext(Dispatchers.IO) { runCatching { file.close() } }
+    }
 }
 
 /**
@@ -71,5 +73,7 @@ class FileChunkSink(
         }.getOrDefault(true)
     }
 
-    override suspend fun close() = withContext(Dispatchers.IO) { runCatching { file.close() } }
+    override suspend fun close() {
+        withContext(Dispatchers.IO) { runCatching { file.close() } }
+    }
 }

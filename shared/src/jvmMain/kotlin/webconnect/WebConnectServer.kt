@@ -42,7 +42,7 @@ import kotlinx.serialization.json.jsonObject
  * SECURITY POSTURE (Section H):
  *  - Binds ONLY to the LAN-facing interface ([host]), never 0.0.0.0; there is no
  *    cloud relay and nothing is reachable beyond the local network.
- *  - Every `/api/*` and `/ws/*` endpoint requires a valid HttpOnly session
+ *  - Every api and ws endpoint requires a valid HttpOnly session
  *    cookie minted by [PairingManager]; otherwise HTTP 401.
  *
  * DEVIATION (documented): the spec asks for self-signed TLS. Generating a
