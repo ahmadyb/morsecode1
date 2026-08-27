@@ -77,11 +77,14 @@ jobs:
           key: ${{ runner.os }}-gradle-android-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
           restore-keys: ${{ runner.os }}-gradle-android-
 
-      - name: Require release signing secrets
-        if: ${{ secrets.MORSECODE_KEYSTORE_BASE64 == '' }}
+        - name: Require release signing secrets
+        env:
+          KS: ${{ secrets.MORSECODE_KEYSTORE_BASE64 }}
         run: |
-          echo "::error::MORSECODE_KEYSTORE_BASE64 secret is not set; release-only APK build requires signing secrets."
-          exit 1
+          if [ -z "$KS" ]; then
+            echo "::error::MORSECODE_KEYSTORE_BASE64 secret is not set; release-only APK build requires signing secrets."
+            exit 1
+          fi
 
       - name: Write release keystore
         run: echo "${{ secrets.MORSECODE_KEYSTORE_BASE64 }}" | base64 -d > morsecode-release.jks
