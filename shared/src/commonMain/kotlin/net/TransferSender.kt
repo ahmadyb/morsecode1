@@ -237,7 +237,10 @@ class TransferSender(
             }
             publishProgress(state, speed)
         }
-        return state.result ?: fail(state, ErrorCode.INTERNAL, "transfer loop exited without a result")
+        if (state.result == null) {
+            fail(state, ErrorCode.INTERNAL, "transfer loop exited without a result")
+        }
+        return state.result ?: error("unreachable: fail() must set state.result")
     }
 
     /** Section 6 step 1. */

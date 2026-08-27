@@ -10,6 +10,7 @@ import net.morsecode.net.Discovery
 import net.morsecode.net.FileManifestEntry
 import net.morsecode.net.TransferController
 import net.morsecode.net.createCrypto
+import net.morsecode.net.createDiscovery
 import net.morsecode.media.AppLibrary
 import net.morsecode.media.MediaLibrary
 import net.morsecode.media.createMediaLibrary

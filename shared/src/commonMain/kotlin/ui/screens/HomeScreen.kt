@@ -15,6 +15,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -30,9 +31,9 @@ import net.morsecode.ui.AppState
  */
 @Composable
 fun HomeScreen(app: AppState, onSendTo: (DiscoveredDevice) -> Unit = {}) {
-    val devices by app.devices
-    val pending by app.pendingIncoming
-    val receive by app.receiveProgress
+    val devices by app.devices.collectAsState()
+    val pending by app.pendingIncoming.collectAsState()
+    val receive by app.receiveProgress.collectAsState()
 
     Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("Nearby devices", style = MaterialTheme.typography.titleLarge)

@@ -54,7 +54,7 @@ fun ChatScreen(app: AppState) {
             Text("Conversations", style = MaterialTheme.typography.titleLarge)
             LazyColumn {
                 items(previews, key = { it.peerDeviceId }) { p ->
-                    Card(Modifier.fillMaxWidth().padding(4.dp), onClick = { activePeer = p.peerDeviceId }) {
+                    Card(onClick = { activePeer = p.peerDeviceId }, modifier = Modifier.fillMaxWidth().padding(4.dp)) {
                         Column(Modifier.padding(12.dp)) {
                             Text(p.peerDeviceId, style = MaterialTheme.typography.titleMedium)
                             Text(p.text, style = MaterialTheme.typography.bodySmall)

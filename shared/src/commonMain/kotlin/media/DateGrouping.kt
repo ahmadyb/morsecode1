@@ -40,7 +40,15 @@ object DateGrouping {
             .map { entry -> DayGroup(entry.key, headerFor(entry.key), entry.value) }
     }
 
-    fun headerFor(date: LocalDate): String = "${MONTH_NAMES[date.monthNumber - 1]} ${date.day}, ${date.year}"
+    fun headerFor(date: LocalDate): String {
+        // Parse the ISO-8601 form (yyyy-MM-dd) rather than touching LocalDate
+        // member properties, keeping this independent of the datetime API shape.
+        val p = date.toString().split('-')
+        val y = p[0].toInt()
+        val m = p[1].toInt()
+        val d = p[2].toInt()
+        return "${MONTH_NAMES[m - 1]} $d, $y"
+    }
 
     private val MONTH_NAMES = listOf(
         "January", "February", "March", "April", "May", "June",
