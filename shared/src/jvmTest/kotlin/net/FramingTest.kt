@@ -209,9 +209,8 @@ class FramingTest {
     @Test
     fun `assembler rejects a post-handshake frame too short to hold a tag`() {
         val assembler = FrameAssembler(FrameAssembler.Mode.POST_HANDSHAKE)
-        val header = ByteArray(4)
+        val header = ByteArray(4 + 1 + Framing.GCM_NONCE_BYTES)
         Framing.putUInt32BE(header, 0, 1 + Framing.GCM_NONCE_BYTES) // no room for the tag
-        header += ByteArray(1 + Framing.GCM_NONCE_BYTES)
 
         val rejected = assembler.offer(header).filterIsInstance<AssemblerEvent.Rejected>()
         assertEquals(1, rejected.size)

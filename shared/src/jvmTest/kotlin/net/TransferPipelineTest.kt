@@ -121,7 +121,7 @@ class TransferPipelineTest {
                 // Closing lets the receiver observe EOF and exit its loop. Any
                 // frames still buffered are delivered before the close.
                 p.sender.close()
-                result to receiveJob.await() to sink
+                Triple(result, receiveJob.await(), sink)
             }
         }
     }

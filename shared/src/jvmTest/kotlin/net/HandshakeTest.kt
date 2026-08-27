@@ -156,6 +156,7 @@ class HandshakeTest {
             trustedOnResponder = setOf(aliceIdentity.deviceId),
         )
         assertIs<HandshakeOutcome.Success>(a)
+        assertIs<HandshakeOutcome.Success>(b)
         assertTrue(b.peer.isTrusted, "responder must record that this peer was trusted")
     }
 
