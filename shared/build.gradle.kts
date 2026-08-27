@@ -214,6 +214,20 @@ sqldelight {
     }
 }
 
+// ────────────────────────────────────────────────────────────────────────────
+// Surface failing test names + assertion messages on the CI console. Gradle's
+// default test logging only says "There were failing tests", and the HTML report
+// is not readable from the offline toolchain, so we print failures to stdout
+// where the workflow's grep re-emits them as annotations.
+// ────────────────────────────────────────────────────────────────────────────
+tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
+    testLogging {
+        events("failed")
+        exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+        showStackTraces = false
+    }
+}
+
 // Section 0 documents `./gradlew :shared:jvmTest`. The JVM target is named
 // "desktop", so the real test task is `desktopTest`. Register the spec's name
 // EAGERLY as an alias (a lazy matching-based alias is never created when the
