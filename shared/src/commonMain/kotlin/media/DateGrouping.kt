@@ -37,7 +37,7 @@ object DateGrouping {
         }
         return buckets.entries
             .sortedByDescending { it.key }
-            .map { (day, list) -> DayGroup(day, headerFor(day), list) }
+            .map { entry -> DayGroup(entry.key, headerFor(entry.key), entry.value) }
     }
 
     fun headerFor(date: LocalDate): String = "${MONTH_NAMES[date.monthNumber - 1]} ${date.day}, ${date.year}"

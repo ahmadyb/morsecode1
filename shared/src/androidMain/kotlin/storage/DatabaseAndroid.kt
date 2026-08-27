@@ -12,7 +12,7 @@ import net.morsecode.storage.db.MorseCodeDatabase
  */
 object AndroidAppContext {
     lateinit var context: Context
-    fun isSet: Boolean = ::context.isInitialized
+    val isSet: Boolean get() = ::context.isInitialized
 }
 
 actual fun createDriver(): SqlDriver =

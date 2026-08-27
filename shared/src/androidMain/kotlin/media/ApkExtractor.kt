@@ -28,12 +28,7 @@ object ApkExtractor {
         if (!source.canRead()) return@withContext null
 
         val outDir = File(context.cacheDir, "apk").apply { mkdirs() }
-        val out = File(outDir, "$packageName-${ai.versionCodeSafe()}.apk")
+        val out = File(outDir, "$packageName-base.apk")
         runCatching { source.copyTo(out, overwrite = true) }.getOrNull()
     }
-
-    private fun android.content.pm.ApplicationInfo.versionCodeSafe(): Long = runCatching {
-        @Suppress("DEPRECATION")
-        longVersionCode
-    }.getOrDefault(0L)
 }

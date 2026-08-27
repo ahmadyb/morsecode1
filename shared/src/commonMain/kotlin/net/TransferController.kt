@@ -34,7 +34,7 @@ class TransferController(
     private val sourceFactory: (FileManifestEntry) -> ChunkSource,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-    private var server: JvmTransferServer? = null
+    private var server: TransferServer? = null
     private var acceptJob: Job? = null
 
     val boundPort = MutableStateFlow<Int?>(null)
@@ -57,7 +57,7 @@ class TransferController(
     /** Binds the server, starts discovery, and runs the accept loop. */
     fun start() {
         scope.launch {
-            val srv = JvmTransferServer.bind(DEFAULT_PORT)
+            val srv = bindTransferServer(DEFAULT_PORT)
             server = srv
             boundPort.value = srv.port
             discovery.start(identity, srv.port)
@@ -131,7 +131,7 @@ class TransferController(
             store = store,
             nowMillis = { now() },
             connect = { r ->
-                val transport = JvmSocketTransport.connect(r.host, r.port)
+                val transport = connectTransport(r.host, r.port)
                 HandshakeCoordinator(
                     crypto = crypto,
                     identity = identity,
@@ -146,7 +146,7 @@ class TransferController(
                     nowMillis = { now() },
                 )
                 sender.manifestBatchId = batchId
-                fs.map { sender.sendFile(IdSeed(), it, sourceFactory(it)) }
+                fs.map { of -> sender.sendFile(IdSeed(), of.manifest, of.newSource()) }
             },
         )
         scope.launch { coordinator.progress.collect { _batchProgress.value = it } }

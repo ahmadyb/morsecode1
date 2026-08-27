@@ -66,6 +66,23 @@ data class PeerIdentity(
  * problem. The distinction matters to the UI: a rejection is worth showing the
  * user verbatim, a failure is worth retrying.
  */
+/**
+ * Platform-agnostic handle to the listening transfer server. The concrete JVM
+ * implementation lives in `jvmMain/net/SocketJvm.kt`; [bindTransferServer] and
+ * [connectTransport] are the expect/actual seam so `commonMain` code (the
+ * [net.TransferController]) never names a `java.net` type.
+ */
+interface TransferServer {
+    val port: Int
+    /** @return null once closed. */
+    suspend fun accept(): SocketTransport?
+    suspend fun close()
+}
+
+expect suspend fun bindTransferServer(port: Int): TransferServer
+
+expect suspend fun connectTransport(host: String, port: Int): SocketTransport
+
 sealed interface HandshakeOutcome {
     data class Success(
         val connection: SecureConnection,

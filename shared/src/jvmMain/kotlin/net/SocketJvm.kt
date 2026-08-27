@@ -174,6 +174,20 @@ class JvmTransferServer private constructor(
  * peer on the Wi-Fi network, and advertising one produces a QR code that
  * scans fine and then never connects.
  */
+/** commonMain seam: bind the JVM listening server behind [TransferServer]. */
+actual suspend fun bindTransferServer(port: Int): TransferServer {
+    val delegate = JvmTransferServer.bind(port)
+    return object : TransferServer {
+        override val port: Int get() = delegate.port
+        override suspend fun accept(): SocketTransport? = delegate.accept()
+        override suspend fun close() = delegate.close()
+    }
+}
+
+/** commonMain seam: open an outbound JVM socket. */
+actual suspend fun connectTransport(host: String, port: Int): SocketTransport =
+    JvmSocketTransport.connect(host, port)
+
 object NetworkInterfaces {
     fun lanAddresses(): List<String> = runCatching {
         java.net.NetworkInterface.getNetworkInterfaces().toList().flatMap { iface ->
