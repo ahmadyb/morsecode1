@@ -98,18 +98,24 @@ kotlin {
             }
         }
 
-        // --- jvmMain: shared by BOTH Android and Desktop ---
-        val jvmMain by getting {
+        // --- jvmMain: an INTERMEDIATE source set shared by BOTH Android and
+        // Desktop. It is NOT produced by the default hierarchy (the JVM target
+        // is named "desktop"), so it must be created and wired manually. Both
+        // androidMain and desktopMain `dependsOn` it (see their blocks below),
+        // which is what lets Crypto.kt / DiscoveryJvm.kt / FileChunkSource.kt
+        // live once under src/jvmMain and compile into both platforms.
+        val jvmMain by creating {
+            dependsOn(commonMain)
             dependencies {
                 // Pure-Java artifacts that work identically on both platforms.
-                // Declaring them here rather than duplicating the pair of
-                // declarations across androidMain and desktopMain.
                 implementation(libs.jmdns)
                 implementation(libs.zxing.core)
             }
         }
 
-        val jvmTest by getting {
+        val jvmTest by creating {
+            dependsOn(commonTest)
+            dependsOn(jvmMain)
             dependencies {
                 implementation(libs.kotlin.test)
                 implementation(libs.kotlinx.coroutines.core)
@@ -117,6 +123,7 @@ kotlin {
         }
 
         val androidMain by getting {
+            dependsOn(jvmMain)
             dependencies {
                 implementation(libs.sqldelight.android.driver)
                 implementation(libs.androidx.core.ktx)
@@ -141,6 +148,7 @@ kotlin {
         }
 
         val desktopMain by getting {
+            dependsOn(jvmMain)
             dependencies {
                 implementation(compose.desktop.currentOs)
                 implementation(libs.kotlinx.coroutines.swing)
@@ -156,6 +164,7 @@ kotlin {
         }
 
         val desktopTest by getting {
+            dependsOn(jvmTest)
             dependencies {
                 implementation(libs.kotlin.test.junit)
                 implementation(libs.junit)
