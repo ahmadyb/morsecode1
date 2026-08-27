@@ -7,6 +7,7 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import androidx.activity.ComponentActivity
 import androidx.activity.result.contract.ActivityResultContracts
 
 /**
@@ -19,7 +20,7 @@ import androidx.activity.result.contract.ActivityResultContracts
  * Requests use ActivityResultContracts; results are logged but never block the
  * UI — denied permissions degrade the affected section gracefully.
  */
-class PermissionsManager(private val activity: Activity) {
+class PermissionsManager(private val activity: ComponentActivity) {
 
     private val requestPermissions = activity.registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions(),

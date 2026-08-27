@@ -50,7 +50,7 @@ fun buildDesktopAppState(): AppState {
             )
         },
         sourceFactory = { manifest ->
-            FileChunkSource(path = File(java.net.URI(manifest.uri)).absolutePath, crypto = crypto)
+            FileChunkSource(path = File(manifest.relativePath ?: manifest.filename).absolutePath, crypto = crypto)
         },
     )
 }

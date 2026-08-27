@@ -74,7 +74,7 @@ fun buildAndroidAppState(): net.morsecode.ui.AppState {
     return createAppState(
         deviceName = "This Phone",
         deviceType = DeviceType.ANDROID,
-        appLibrary = AppLibraryAndroid(ctx),
+        appLibrary = AppLibraryAndroid(),
         isDesktop = false,
         sinkFactory = { _, manifest ->
             FileChunkSink(
@@ -84,16 +84,11 @@ fun buildAndroidAppState(): net.morsecode.ui.AppState {
             )
         },
         sourceFactory = { manifest ->
-            // Copy the content:// source into a temp file the chunk source can seek.
-            val temp = File(ctx.cacheDir, "send_" + manifest.id + ".part")
-            if (!temp.exists() || temp.length() != manifest.sizeBytes) {
-                runCatching {
-                    ctx.contentResolver.openInputStream(android.net.Uri.parse(manifest.uri))?.use { input ->
-                        temp.outputStream().use { input.copyTo(it) }
-                    }
-                }
-            }
-            FileChunkSource(path = temp.absolutePath, crypto = crypto)
+            // The manifest carries a relative/absolute path the chunk source can seek.
+            FileChunkSource(
+                path = File(manifest.relativePath ?: manifest.filename).absolutePath,
+                crypto = crypto,
+            )
         },
     )
 }
