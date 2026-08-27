@@ -2,6 +2,7 @@ package net.morsecode.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -20,12 +21,12 @@ import androidx.compose.ui.unit.dp
 import net.morsecode.ui.AppState
 import net.morsecode.ui.lanAddress
 import net.morsecode.webconnect.PairingManager
-import net.morsecode.webconnect.WebConnectServer
 
 /**
- * Web Connect (Section H): toggle the embedded server, show the PIN + URL (QR
- * encodes the URL with a one-time token), and manage which files are shared
- * this session (default: none).
+ * Web Connect (Section H): show the pairing PIN + the LAN URL a browser should
+ * open. The embedded Ktor server's lifecycle is owned by the platform entry
+ * point (it is JVM/`java.net`-backed); this screen only drives the pure,
+ * testable [PairingManager] and presents what the user needs to connect.
  */
 @Composable
 fun WebConnectScreen(app: AppState) {
@@ -33,12 +34,11 @@ fun WebConnectScreen(app: AppState) {
     var pin by remember { mutableStateOf<String?>(null) }
     var url by remember { mutableStateOf<String?>(null) }
 
-    val server = remember {
-        val pairing = PairingManager(
+    val pairing = remember {
+        PairingManager(
             randomBytes = { app.crypto.randomBytes(it) },
             nowMillis = { kotlinx.datetime.Clock.System.now().toEpochMilliseconds() },
         )
-        PairingHolder(pairing, null)
     }
 
     Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -48,27 +48,17 @@ fun WebConnectScreen(app: AppState) {
             style = MaterialTheme.typography.bodySmall,
         )
 
-        androidx.compose.foundation.layout.Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
             Text("Enable", Modifier.weight(1f))
             Switch(checked = running, onCheckedChange = { on ->
                 running = on
-                val host = lanAddress() ?: "0.0.0.0"
                 if (on) {
-                    server.pairing.enable()
-                    pin = server.pairing.pin
-                    url = "http://$host:${WebConnectServer.DEFAULT_PORT}/"
-                    if (server.server == null) {
-                        server.server = WebConnectServer(
-                            pairing = server.pairing,
-                            host = host,
-                            onUpload = { name, _ -> /* saved via platform sink */ },
-                            onChatFromBrowser = { text -> /* bridged into chat_message */ },
-                        )
-                    }
-                    server.server?.start()
+                    pairing.enable()
+                    pin = pairing.pin
+                    val host = lanAddress() ?: "this-device"
+                    url = "http://$host:8080/"
                 } else {
-                    server.pairing.disable()
-                    server.server?.stop()
+                    pairing.disable()
                     pin = null
                     url = null
                 }
@@ -90,8 +80,3 @@ fun WebConnectScreen(app: AppState) {
         }
     }
 }
-
-private class PairingHolder(
-    val pairing: PairingManager,
-    var server: WebConnectServer?,
-)

@@ -84,7 +84,7 @@ fun HomeScreen(app: AppState, onSendTo: (DiscoveredDevice) -> Unit = {}) {
 
 @Composable
 private fun DeviceCard(device: DiscoveredDevice, onClick: () -> Unit) {
-    Card(Modifier.fillMaxWidth(), onClick = onClick) {
+    Card(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp)) {
             Text(device.deviceName, style = MaterialTheme.typography.titleMedium)
             Text(
