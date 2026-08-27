@@ -1,0 +1,44 @@
+# ── Gradle ───────────────────────────────────────────────────────────────────
+# The wrapper JAR is deliberately NOT ignored: gradle/wrapper/gradle-wrapper.jar
+# must be committed so ./gradlew works on a fresh clone without a preinstalled
+# Gradle. Everything else Gradle generates is disposable.
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+kotlin-js-store/
+
+# ── Android ──────────────────────────────────────────────────────────────────
+local.properties
+*.apk
+*.aab
+*.ap_
+*.dex
+captures/
+.externalNativeBuild/
+.cxx/
+# The release keystore must never be committed. CI reads it from a secret; see
+# README, "Signing the release APK".
+*.jks
+*.keystore
+
+# ── IDE ──────────────────────────────────────────────────────────────────────
+.idea/
+!.idea/codeStyles/
+!.idea/inspectionProfiles/
+*.iml
+.DS_Store
+
+# ── Kotlin / SQLDelight codegen ──────────────────────────────────────────────
+generated/
+
+# ── Desktop packaging output ─────────────────────────────────────────────────
+# .msi / .exe installers are produced by CI and published as Release assets,
+# not stored in the repository.
+desktopApp/build/compose/binaries/
+
+# ── Secrets / local config ───────────────────────────────────────────────────
+*.env
+secrets.properties
+# Self-signed Web Connect TLS material (Section H.3) is generated into the
+# app's private storage at runtime and must never be checked in.
+webconnect-*.p12

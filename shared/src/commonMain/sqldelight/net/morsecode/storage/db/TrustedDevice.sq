@@ -1,0 +1,47 @@
+-- ────────────────────────────────────────────────────────────────────────────
+-- trusted_device — Section 9.
+--
+-- The spec's Section 13 only transcribes transfer_state and chat_message, but
+-- Section 9 requires TrustedDeviceRepo to persist to SQLDelight and stay
+-- local-only, so this table is defined here. Schema is therefore this
+-- project's own, not transcribed.
+--
+-- "Local only" is enforced by the absence of any sync path, not by a flag: no
+-- repository in this module ever writes trusted_device anywhere but SQLite.
+-- ────────────────────────────────────────────────────────────────────────────
+CREATE TABLE trusted_device (
+  device_id TEXT NOT NULL PRIMARY KEY,
+  device_name TEXT NOT NULL,
+  device_type TEXT NOT NULL,
+  last_seen_ip TEXT,
+  trusted_at INTEGER NOT NULL,
+  last_seen_at INTEGER NOT NULL
+);
+
+CREATE INDEX idx_trusted_device_last_seen ON trusted_device(last_seen_at DESC);
+
+-- The hot path: HandshakeCoordinator calls this on every incoming HELLO.
+isTrusted:
+SELECT COUNT(*) FROM trusted_device WHERE device_id = ?;
+
+trust:
+INSERT INTO trusted_device(device_id, device_name, device_type, last_seen_ip, trusted_at, last_seen_at)
+VALUES (?, ?, ?, ?, ?, ?)
+ON CONFLICT(device_id) DO UPDATE SET
+  device_name = excluded.device_name,
+  device_type = excluded.device_type,
+  last_seen_ip = excluded.last_seen_ip,
+  last_seen_at = excluded.last_seen_at;
+
+-- "Forget" action in Settings -> Manage trusted devices (Section 9).
+forget:
+DELETE FROM trusted_device WHERE device_id = ?;
+
+selectAll:
+SELECT * FROM trusted_device ORDER BY last_seen_at DESC;
+
+selectById:
+SELECT * FROM trusted_device WHERE device_id = ?;
+
+touchLastSeen:
+UPDATE trusted_device SET last_seen_at = ?, last_seen_ip = ? WHERE device_id = ?;

@@ -1,0 +1,65 @@
+-- ────────────────────────────────────────────────────────────────────────────
+-- chat_message — Section 13, consumed by ChatRepo (Section G).
+--
+-- Verbatim from the spec. Created in Phase 3 alongside transfer_state, NOT
+-- bolted on later in Phase 13, so the schema migrates once rather than twice.
+--
+-- One conversation thread per peer_device_id: the spec is explicit that
+-- threads are keyed on the peer, so every query below filters on it.
+-- ────────────────────────────────────────────────────────────────────────────
+CREATE TABLE chat_message (
+  message_id TEXT NOT NULL PRIMARY KEY,
+  peer_device_id TEXT NOT NULL,
+  text TEXT NOT NULL,
+  direction TEXT NOT NULL,
+  sent_at INTEGER NOT NULL,
+  delivered INTEGER NOT NULL DEFAULT 0
+);
+
+-- The Chat screen renders one thread at a time, newest-last.
+CREATE INDEX idx_chat_message_thread ON chat_message(peer_device_id, sent_at);
+
+insert:
+INSERT INTO chat_message(message_id, peer_device_id, text, direction, sent_at, delivered)
+VALUES (?, ?, ?, ?, ?, ?);
+
+-- Re-inserting a message we already have (a retransmit after a dropped ACK)
+-- must not create a duplicate bubble.
+insertOrIgnore:
+INSERT OR IGNORE INTO chat_message(message_id, peer_device_id, text, direction, sent_at, delivered)
+VALUES (?, ?, ?, ?, ?, ?);
+
+selectThread:
+SELECT * FROM chat_message
+WHERE peer_device_id = ?
+ORDER BY sent_at ASC;
+
+-- Most recent N, used to render the tail of a long thread without loading it
+-- all into memory on an 8 GB dev box.
+selectThreadTail:
+SELECT * FROM (
+  SELECT * FROM chat_message
+  WHERE peer_device_id = ?
+  ORDER BY sent_at DESC
+  LIMIT ?
+) ORDER BY sent_at ASC;
+
+markDelivered:
+UPDATE chat_message SET delivered = 1 WHERE message_id = ?;
+
+-- The conversation list on the Chat destination needs one row per peer with
+-- that peer's newest message. `GROUP BY` + `MAX` rather than a window function
+-- so it works on the SQLite build shipped with API 23.
+selectConversationPreviews:
+SELECT m.* FROM chat_message m
+INNER JOIN (
+  SELECT peer_device_id, MAX(sent_at) AS newest
+  FROM chat_message GROUP BY peer_device_id
+) latest ON latest.peer_device_id = m.peer_device_id AND latest.newest = m.sent_at
+ORDER BY m.sent_at DESC;
+
+countUndelivered:
+SELECT COUNT(*) FROM chat_message WHERE peer_device_id = ? AND direction = 'sent' AND delivered = 0;
+
+deleteThread:
+DELETE FROM chat_message WHERE peer_device_id = ?;

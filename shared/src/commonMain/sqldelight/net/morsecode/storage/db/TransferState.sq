@@ -1,0 +1,98 @@
+-- ────────────────────────────────────────────────────────────────────────────
+-- transfer_state — resume logic (PROTOCOL SPECIFICATION, Section 13).
+--
+-- Table definition is transcribed verbatim from the spec. The columns and the
+-- PRIMARY KEY are load-bearing: `verified_chunks_bitmap` is the authoritative
+-- record of which chunks survived, and a resume that gets it wrong silently
+-- produces a corrupt file that passes no checksum and wastes a full retransfer.
+--
+-- `verified_chunks_bitmap` is stored as a string of '0'/'1' characters, one per
+-- chunk. A textual bitmap rather than a BLOB or an INTEGER bitmask because
+-- total_chunks is unbounded (a 1 TB file at 4 MiB chunks is 262144 chunks) and
+-- a string is trivially diffable when debugging a bad resume.
+-- ────────────────────────────────────────────────────────────────────────────
+CREATE TABLE transfer_state (
+  transfer_id TEXT NOT NULL,
+  file_id TEXT NOT NULL,
+  batch_id TEXT,
+  peer_device_id TEXT NOT NULL,
+  filename TEXT NOT NULL,
+  total_chunks INTEGER NOT NULL,
+  verified_chunks_bitmap TEXT NOT NULL DEFAULT '',
+  sha256_full TEXT NOT NULL,
+  status TEXT NOT NULL,
+  direction TEXT NOT NULL,
+  updated_at INTEGER NOT NULL,
+  PRIMARY KEY (transfer_id, file_id)
+);
+
+-- Index for the two access patterns that actually happen: "resume this file"
+-- and "render the History tab for this peer / this direction".
+CREATE INDEX idx_transfer_state_status ON transfer_state(status);
+CREATE INDEX idx_transfer_state_peer ON transfer_state(peer_device_id, direction);
+CREATE INDEX idx_transfer_state_batch ON transfer_state(batch_id);
+
+upsert:
+INSERT INTO transfer_state(
+  transfer_id, file_id, batch_id, peer_device_id, filename,
+  total_chunks, verified_chunks_bitmap, sha256_full, status, direction, updated_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+ON CONFLICT(transfer_id, file_id) DO UPDATE SET
+  batch_id = excluded.batch_id,
+  peer_device_id = excluded.peer_device_id,
+  filename = excluded.filename,
+  total_chunks = excluded.total_chunks,
+  verified_chunks_bitmap = excluded.verified_chunks_bitmap,
+  sha256_full = excluded.sha256_full,
+  status = excluded.status,
+  direction = excluded.direction,
+  updated_at = excluded.updated_at;
+
+selectById:
+SELECT * FROM transfer_state
+WHERE transfer_id = ? AND file_id = ?;
+
+-- Used by the receiver to build TRANSFER_RESPONSE.resume_offsets: the highest
+-- contiguous verified index is what the sender can safely skip past.
+selectForResume:
+SELECT * FROM transfer_state
+WHERE peer_device_id = ? AND direction = ? AND status IN ('paused', 'failed');
+
+updateBitmap:
+UPDATE transfer_state
+SET verified_chunks_bitmap = ?, status = ?, updated_at = ?
+WHERE transfer_id = ? AND file_id = ?;
+
+updateStatus:
+UPDATE transfer_state
+SET status = ?, updated_at = ?
+WHERE transfer_id = ? AND file_id = ?;
+
+updateBatchStatus:
+UPDATE transfer_state
+SET status = ?, updated_at = ?
+WHERE batch_id = ?;
+
+-- History tab (Section E.4). Ordered newest-first; DateGrouping buckets the
+-- result by day in Kotlin rather than in SQL, because the day boundary has to
+-- respect the device's local timezone and SQLite has no timezone support.
+selectHistory:
+SELECT * FROM transfer_state
+WHERE direction = ? AND status IN ('completed', 'failed', 'cancelled')
+ORDER BY updated_at DESC;
+
+selectHistoryAll:
+SELECT * FROM transfer_state
+WHERE status IN ('completed', 'failed', 'cancelled')
+ORDER BY updated_at DESC;
+
+selectByBatch:
+SELECT * FROM transfer_state
+WHERE batch_id = ?
+ORDER BY updated_at DESC;
+
+countByStatus:
+SELECT COUNT(*) FROM transfer_state WHERE status = ?;
+
+deleteOlderThan:
+DELETE FROM transfer_state WHERE updated_at < ?;
