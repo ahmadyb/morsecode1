@@ -22,16 +22,9 @@ plugins {
 // the documented command work verbatim instead of forcing a correction to
 // every command in the spec.
 // ────────────────────────────────────────────────────────────────────────────
-allprojects {
-    tasks.matching { it.name == "desktopTest" }.configureEach {
-        val alias = tasks.register("jvmTest") {
-            group = "verification"
-            description = "Alias for :${project.name}:desktopTest — the command named in Section 0 of the spec."
-            dependsOn(this@configureEach)
-        }
-        alias.get()
-    }
-}
+// The :shared:jvmTest alias is registered EAGERLY in shared/build.gradle.kts.
+// (A lazy matching-based alias is never created when the task is requested
+// directly, which is what broke the CI run.)
 
 tasks.register("clean", Delete::class) {
     delete(rootProject.layout.buildDirectory)

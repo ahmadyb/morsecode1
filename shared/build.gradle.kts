@@ -115,7 +115,6 @@ kotlin {
 
         val jvmTest by creating {
             dependsOn(commonTest)
-            dependsOn(jvmMain)
             dependencies {
                 implementation(libs.kotlin.test)
                 implementation(libs.kotlinx.coroutines.core)
@@ -213,4 +212,14 @@ sqldelight {
             // as the phase list requires — not bolted on later in Phase 13.
         }
     }
+}
+
+// Section 0 documents `./gradlew :shared:jvmTest`. The JVM target is named
+// "desktop", so the real test task is `desktopTest`. Register the spec's name
+// EAGERLY as an alias (a lazy matching-based alias is never created when the
+// task is requested directly, which is what broke the CI run).
+tasks.register("jvmTest") {
+    group = "verification"
+    description = "Alias for :shared:desktopTest — the command named in Section 0 of the spec."
+    dependsOn("desktopTest")
 }
