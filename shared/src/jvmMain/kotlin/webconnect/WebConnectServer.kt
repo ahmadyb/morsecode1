@@ -17,7 +17,7 @@ import java.util.concurrent.Executors
  * posture below is unchanged from the spec.
  *
  *  - Binds ONLY to the LAN-facing interface ([host]), never 0.0.0.0.
- *  - Every `/api/*` endpoint requires a valid HttpOnly session cookie minted by
+ *  - Every api endpoint requires a valid HttpOnly session cookie minted by
  *    [PairingManager]; otherwise HTTP 401.
  *  - Plain HTTP on the LAN (self-signed TLS is a documented follow-up).
  *
