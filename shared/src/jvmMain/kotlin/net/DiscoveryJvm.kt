@@ -71,11 +71,7 @@ class JmDnsDiscovery : Discovery {
 
         val l = object : ServiceListener {
             override fun serviceAdded(event: ServiceEvent) {
-                // Request resolution so we get host/port/TXT.
-                try {
-                    event.dns.requestServiceInfo(event.info.qualifiedName)
-                } catch (_: Exception) {
-                }
+                // Resolution is delivered via serviceResolved; nothing to do here.
             }
 
             override fun serviceRemoved(event: ServiceEvent) {
