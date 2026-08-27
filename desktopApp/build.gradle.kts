@@ -5,9 +5,9 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 // :desktopApp — thin Windows/macOS/Linux wrapper hosting the shared Compose UI.
 //
 // `packageDistributionForCurrentOS` produces the native installer. On a Windows
-// runner that is the .msi / .exe the spec asks for (Section 16). Cross-compiling
-// a Windows installer from Linux is not supported by the Compose Desktop
-// plugin, which is why CI runs this job on windows-latest.
+// runner that is the .exe the spec asks for (Section 16); only the EXE target
+// is enabled. Cross-compiling a Windows installer from Linux is not supported
+// by the Compose Desktop plugin, which is why CI runs this job on windows-latest.
 // ────────────────────────────────────────────────────────────────────────────
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
@@ -39,7 +39,7 @@ compose.desktop {
         mainClass = "net.morsecode.desktop.MainKt"
 
         nativeDistributions {
-            targetFormats(TargetFormat.Msi, TargetFormat.Exe)
+            targetFormats(TargetFormat.Exe)
             packageName = "MorseCode"
             packageVersion = "1.0.0"
             description = "Private, offline device-to-device file transfer."
