@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Paths the FileProvider may hand to other apps. Kept narrow on purpose:
+  only the received-files directory is shareable, never the app's private
+  storage. Used by ApkInstaller to install a received APK (Section E.4).
+-->
+<paths>
+    <external-files-path name="received" path="MorseCode/" />
+    <cache-path name="apk_cache" path="apk/" />
+</paths>

@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Flat two-shape transfer mark. Vector keeps the adaptive foreground crisp at
+  any badge mask. Colours match values/colors.xml.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group android:translateX="20" android:translateY="24">
+        <path
+            android:fillColor="#0D9488"
+            android:pathData="M0,8 a8,8 0 0,1 8,-8 h24 a8,8 0 0,1 8,8 v28 a8,8 0 0,1 -8,8 h-24 a8,8 0 0,1 -8,-8 z" />
+        <path
+            android:fillColor="#4F46E5"
+            android:fillAlpha="0.9"
+            android:pathData="M26,16 a8,8 0 0,1 8,-8 h24 a8,8 0 0,1 8,8 v28 a8,8 0 0,1 -8,8 h-24 a8,8 0 0,1 -8,-8 z" />
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M34,20 h8 v-5 l10,9 l-10,9 v-5 h-8 z" />
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M10,44 h4 v4 h-4 z M18,44 h8 v4 h-8 z M30,44 h4 v4 h-4 z M38,44 h4 v4 h-4 z M46,44 h4 v4 h-4 z M54,44 h8 v4 h-8 z" />
+    </group>
+</vector>

@@ -60,3 +60,9 @@ fun CryptoProvider.deriveSessionKey(
 ): ByteArray = Hkdf.deriveSessionKey(sharedSecret, publicKeyA, publicKeyB) { key, data ->
     hmacSha256(key, data)
 }
+
+/**
+ * Builds the production [CryptoProvider]. The JCE implementation lives in
+ * `jvmMain`, so common code obtains it through this expect.
+ */
+expect fun createCrypto(): CryptoProvider

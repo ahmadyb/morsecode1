@@ -34,6 +34,8 @@ import javax.crypto.spec.SecretKeySpec
  * A shared `Cipher` object would race on its internal buffer and, far worse,
  * could let two chunks be sealed under the same nonce.
  */
+actual fun createCrypto(): CryptoProvider = JceCryptoProvider()
+
 class JceCryptoProvider(
     private val random: SecureRandom = SecureRandom(),
 ) : CryptoProvider {

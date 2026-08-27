@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Brand colours mirror shared/ui/theme/Color.kt. Kept in sync by hand; the
+  primary is a deep indigo deliberately distinct from Xender/ShareIt hues
+  (Section B).
+-->
+<resources>
+    <color name="ic_launcher_background">#EEF2F7</color>
+    <color name="brand_primary">#4F46E5</color>
+    <color name="brand_secondary">#0D9488</color>
+</resources>
