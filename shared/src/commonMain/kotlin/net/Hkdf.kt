@@ -77,7 +77,13 @@ object Hkdf {
         salt: ByteArray,
         ikm: ByteArray,
         hmacSha256: (key: ByteArray, data: ByteArray) -> ByteArray,
-    ): ByteArray = hmacSha256(salt, ikm)
+    ): ByteArray {
+        // RFC 5869 §2.2: a missing/empty salt is replaced by HashLen zero bytes.
+        // (JCE's Mac also rejects a truly empty key, so this is both correct and
+        // necessary when the caller passes ByteArray(0).)
+        val effectiveSalt = if (salt.isEmpty()) ByteArray(SHA256_HASH_LENGTH) else salt
+        return hmacSha256(effectiveSalt, ikm)
+    }
 
     /**
      * HKDF-Expand.

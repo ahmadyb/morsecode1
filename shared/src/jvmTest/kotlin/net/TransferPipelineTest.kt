@@ -116,12 +116,24 @@ class TransferPipelineTest {
             )
 
             coroutineScope {
+                // The injected clock is the only clock the sender's timeout
+                // sweep consults, so tick it forward while the transfer runs.
+                // Without this the frozen clock would make every retransmission
+                // deadline unreachable and a dropped chunk could never recover.
+                val ticker = async {
+                    while (true) {
+                        kotlinx.coroutines.delay(10)
+                        clock.advance(10)
+                    }
+                }
                 val receiveJob = async { receiver.receiveLoop() }
                 val result = sender.sendFile("t1", manifest, ByteArrayChunkSource(data, chunkSize))
                 // Closing lets the receiver observe EOF and exit its loop. Any
                 // frames still buffered are delivered before the close.
                 p.sender.close()
-                Triple(result, receiveJob.await(), sink)
+                val summary = receiveJob.await()
+                ticker.cancel()
+                Triple(result, summary, sink)
             }
         }
     }
@@ -231,6 +243,13 @@ class TransferPipelineTest {
                 MessageType.CHUNK_DATA,
                 ChunkDataLayout.encode(FileIds.toBytes(fileId), 0, wrongSha, body),
             )
+
+            // The receiver answers the request before it ever sees the chunk,
+            // so drain that response first — otherwise it is what this read
+            // returns instead of the NACK.
+            val accepted = withTimeout(5_000) { p.sender.receive() }
+            assertIs<ReceivedMessage.Payload>(accepted)
+            assertEquals(MessageType.TRANSFER_RESPONSE, accepted.type)
 
             val response = withTimeout(5_000) { p.sender.receive() }
             assertIs<ReceivedMessage.Payload>(response)

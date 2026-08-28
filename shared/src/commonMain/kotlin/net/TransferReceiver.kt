@@ -66,7 +66,7 @@ class TransferReceiver(
         while (true) {
             when (val message = connection.receive()) {
                 is ReceivedMessage.Payload -> when (message.type) {
-                    MessageType.TRANSFER_REQUEST -> onRequest(message.plaintext, failed)
+                    MessageType.TRANSFER_REQUEST -> onRequest(message.plaintext, completed, failed)
 
                     MessageType.CHUNK_DATA -> onChunkData(message.plaintext, completed, failed)
 
@@ -109,6 +109,7 @@ class TransferReceiver(
 
     private suspend fun onRequest(
         plaintext: ByteArray,
+        completed: MutableList<String>,
         failed: MutableList<Pair<String, String>>,
     ) {
         val request = runCatching { MessageJson.decodeFromBytes<TransferRequest>(plaintext) }
@@ -202,6 +203,12 @@ class TransferReceiver(
                     updatedAtEpochMs = nowMillis(),
                 ),
             )
+
+            // A zero-length file has no chunks, so no CHUNK_DATA will ever
+            // arrive to drive completion: the bitmap is already full the moment
+            // the file is accepted, so run the completion gate right here.
+            val opened = openFiles[file.fileId] ?: continue
+            if (opened.bitmap.isComplete) finishFile(opened, completed, failed)
         }
     }
 
