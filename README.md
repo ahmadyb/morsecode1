@@ -8,18 +8,36 @@ analytics, no bloatware.
 ```
 Android (APK)  ──┐
                  ├──►  shared/  ──  one Kotlin Multiplatform module
-Windows (MSI)  ──┘      protocol · crypto · storage · media logic · Compose UI
+Windows (EXE)  ──┘      protocol · crypto · storage · media logic · Compose UI
 ```
 
 ---
 
 ## Build status — read this first
 
-**Nothing in this repository has been compiled yet.** That is a statement of
-fact, not a caveat.
+**Green on GitHub Actions.** Run
+[`33146408718`](https://github.com/ahmadyb/morsecode1/actions/runs/33146408718)
+at commit `2da9df1` — all three jobs succeeded:
+
+| Job | Result | Wall time | Artifact |
+|---|---|---|---|
+| Shared JVM tests (Phases 1-5, 9) | success | 1 m 18 s | `shared-test-report` (16 KB) |
+| Android release APK | success | 1 m 37 s | `android-apk` (19.4 MB, signed) |
+| Windows EXE installer | success | 9 m 19 s | `desktop-installer` (122 MB) |
+
+The suite is the 102-test set covering Phases 1-5 and 9. On the preceding run it
+reported `102 tests completed, 5 failed`; those five are fixed and the job now
+finishes with zero test-failure annotations. (The exact per-run count cannot be
+re-read from here — this sandbox cannot reach
+`productionresultssa*.blob.core.windows.net`, so log and artifact downloads
+fail. The count above is from the earlier run's annotation; what is verified for
+the green run is the job conclusion and the absence of failure annotations.)
+
+### Why CI is the only verification path
 
 The sandbox this project was authored in has **no route to the dependency
-ecosystem**. Verified directly:
+ecosystem**, and no JDK (`/usr/lib/jvm` is empty, `java` and `javac` are
+absent). Verified directly:
 
 | Host | Result |
 |---|---|
@@ -30,25 +48,23 @@ ecosystem**. Verified directly:
 | `services.gradle.org` (Gradle distributions) | **TLS handshake fails (000)** |
 | `plugins.gradle.org` | **TLS handshake fails (000)** |
 
-No JDK was present either. A JDK 17 *runtime* could be obtained (via the
-`jdk4py` package on PyPI), but it ships without `javac`, and no Kotlin compiler
-is published to PyPI or npm. With Maven Central unreachable, `./gradlew` cannot
-resolve a single dependency, so no build, no test run, and no APK/MSI is
-possible there.
+`./gradlew` cannot resolve a single dependency there, so no local build, test
+run, APK or installer is possible. Every compile and test result in this
+document comes from a GitHub Actions run.
 
-**The verification path is CI.** `.github/workflows/build.yml` runs
-`./gradlew :shared:jvmTest`, builds the APK, and packages the Windows installer
-on GitHub's runners, which do have network access. Push this branch and the
-workflow is the first real check of everything below.
+### Measured times (Section 0.5)
 
-Because of that, the following are **not yet measured** and are left blank
-rather than guessed at — Section 0 of the spec asks for them to be documented
-"once a working build is achieved":
+Only the CI numbers above are measured. These are **not**, because the target
+dev machine and an emulator are not available in the authoring sandbox — they
+are left blank rather than guessed at:
 
 - [ ] first-sync duration on the target dev machine
-- [ ] clean build time
-- [ ] incremental build time
+- [ ] clean build time on the target dev machine
+- [ ] incremental build time on the target dev machine
 - [ ] API 23 x86 emulator cold boot / snapshot resume time
+
+The CI wall times include checkout, JDK setup and a cold Gradle download, so
+they are an upper bound for a warm local build, not a substitute for it.
 
 ---
 
@@ -86,10 +102,11 @@ app; it has no bearing on the toolchain above.
 # Phase 1-5 verification: pure JVM, no Android SDK, no emulator.
 ./gradlew :shared:jvmTest
 
-# Android APK  ->  androidApp/build/outputs/apk/
-./gradlew :androidApp:assembleDebug
+# Signed release APK  ->  androidApp/build/outputs/apk/release/
+#   (release only: no debug build. Needs the MORSECODE_* signing env vars)
+./gradlew :androidApp:assembleRelease
 
-# Windows installer  ->  desktopApp/build/compose/binaries/main/
+# Windows installer (.exe)  ->  desktopApp/build/compose/binaries/main/exe/
 ./gradlew :desktopApp:packageDistributionForCurrentOS
 
 # Desktop app, run directly
@@ -105,8 +122,14 @@ per-project, which is the whole point.
 Section 0 of the spec repeatedly names `./gradlew :shared:jvmTest`. With a
 `jvm("desktop")` target — required so the source set is `desktopMain`, as the
 spec's own project tree demands — the generated task is actually
-`:shared:desktopTest`. The root `build.gradle.kts` registers `jvmTest` as an
-alias so **both commands work**.
+`:shared:desktopTest`. `shared/build.gradle.kts` registers `jvmTest` as an alias
+for it, so **both commands work**.
+
+The alias must be registered **eagerly** (`tasks.register("jvmTest") { … }` at
+the end of the shared build script). A lazy
+`tasks.matching { … }.configureEach { register(…) }` form never creates the task
+when it is requested by name, and Gradle fails with `task 'jvmTest' not found` —
+which is exactly what happened on an earlier CI run.
 
 ### Gradle settings for constrained hardware
 
@@ -129,7 +152,8 @@ the same 8 GB.
 
 ## Three deliberate deviations from the spec
 
-Both are places where the spec contradicts itself. Recorded here so nobody
+All three are places where the spec contradicts itself, or asks for something the
+toolchain does not provide. Recorded here so nobody
 "fixes" them back into a broken state.
 
 ### 1. `Crypto.kt` lives in `jvmMain`, not `commonMain`
@@ -144,11 +168,26 @@ written exactly once, shared by both platforms:
 | Source set | Contents |
 |---|---|
 | `commonMain` | `Framing`, `Messages`, `Hkdf` (RFC 5869, pure), `GcmNonceSequence`, the sender/receiver state machines, `Throttle`, media + grouping logic, all UI. Talks to crypto only through the `CryptoProvider` / `SessionCipher` interfaces. |
-| `jvmMain` | `Crypto.kt` — the JCE primitives (ECDH P-256, HMAC-SHA256, AES-GCM). Inherited by **both** `androidMain` and `desktopMain`, so it is compiled once and both platforms ship identical bytes. |
+| `jvmMain` | Everything JVM-backed: `Crypto.kt` (ECDH P-256, HMAC-SHA256, AES-GCM), `SocketJvm.kt`, `DiscoveryJvm.kt` (JmDNS), `FileChunkSource.kt`, `WebConnectServer.kt`. Inherited by **both** `androidMain` and `desktopMain`, so it is compiled once and both platforms ship identical bytes. |
 
-`shared/build.gradle.kts` therefore leaves `applyDefaultHierarchyTemplate()` at
-its default. Adding `common { }` there *replaces* the template and silently
-deletes the `jvm` group — do not do it.
+`shared/build.gradle.kts` leaves `applyDefaultHierarchyTemplate()` at its default
+and declares the intermediate source sets itself:
+
+```kotlin
+val jvmMain by creating { dependsOn(commonMain) }
+val jvmTest by creating { dependsOn(commonTest) }
+val androidMain by getting { dependsOn(jvmMain) }
+val desktopMain by getting { dependsOn(jvmMain) }
+val desktopTest by getting { dependsOn(jvmTest) }
+```
+
+Those two `by creating` blocks are required, not decorative: with `androidTarget()`
+*and* `jvm("desktop")` the default hierarchy template creates no intermediate
+`jvm` group, so without them `jvmMain` would not exist at all. Note also that
+`jvmTest` deliberately does **not** `dependsOn(jvmMain)` — the Phase 1-5/9 tests
+compile against the production classes through the target's own main/test pairing.
+Adding `common { }` to the hierarchy template *replaces* it and silently deletes
+the `jvm` group, so do not do that either.
 
 A side benefit: the transfer state machines depend on an interface, so they can
 be tested with a fake cipher, and `Hkdf` is pure enough to be checked against
@@ -200,7 +239,7 @@ shared/                 Kotlin Multiplatform module — all shared logic
 androidApp/             Android wrapper: MainActivity, permissions, services
 desktopApp/             Desktop wrapper: window, tray, autostart, drag-drop
 gradle/libs.versions.toml          every pinned version
-.github/workflows/      CI: tests, APK, MSI, release publishing
+.github/workflows/      CI: tests, signed APK, Windows .exe, release publishing
 ```
 
 ---
@@ -209,48 +248,71 @@ gradle/libs.versions.toml          every pinned version
 
 | Phase | Scope | State |
 |---|---|---|
-| 1 | `Framing`, crypto scheme, message types | **written** — `Framing.kt`, `Hkdf.kt`, `CryptoApi.kt`, `Crypto.kt`, `Messages.kt`, `Base64.kt` |
-| 2 | `Handshake`, transport abstraction | **written** — `Handshake.kt`, `Transport.kt`, `SecureConnection.kt`, `SocketJvm.kt` |
-| 3 | SQLDelight schema + repos | **schema written** — `TransferState.sq`, `ChatMessage.sq`, `TrustedDevice.sq`; repos pending |
-| 4 | Windowed sender / receiver | **written** — `TransferSender.kt`, `TransferReceiver.kt`, `ChunkBitmap.kt` |
-| 5 | `BroadcastCoordinator`, `RoomManager` | not started |
-| 6 | Theme + core screens | not started |
-| 7 | `androidApp` wrapper | not started |
-| 8 | `desktopApp` wrapper | not started |
-| 9 | Media models, categoriser, date grouping | not started |
-| 10 | Platform media libraries | not started |
-| 11 | Library UI (six tabs) | not started |
-| 12 | Viewers / players | not started |
-| 13 | Chat | not started (schema already present) |
-| 14 | Web Connect | not started |
-| 15 | Logo, trusted devices, throttling polish | partially — throttle written |
-| 16 | Packaging | CI wired, signing pending |
-| 17 | Integration testing | not started |
+| 1 | `Framing`, crypto scheme, message types | done, **test-covered** — `Framing.kt`, `Hkdf.kt`, `CryptoApi.kt`, `Crypto.kt`, `Messages.kt`, `Base64.kt` |
+| 2 | `Handshake`, transport abstraction | done, **test-covered** — `Handshake.kt`, `Transport.kt`, `SecureConnection.kt`, `SocketJvm.kt` |
+| 3 | SQLDelight schema + repos | done — `TransferState.sq`, `ChatMessage.sq`, `TrustedDevice.sq` + `Database`, `TransferStateRepo`, `ChatRepo`, `TrustedDeviceRepo`, `HistoryRepo` |
+| 4 | Windowed sender / receiver | done, **test-covered** — `TransferSender.kt`, `TransferReceiver.kt`, `ChunkBitmap.kt`, `TransferController.kt`, `Throttle.kt` |
+| 5 | `BroadcastCoordinator`, `RoomManager` | done, **test-covered** — `BroadcastCoordinator.kt`, `RoomManager.kt`, `Discovery.kt`, `DiscoveryJvm.kt` |
+| 6 | Theme + core screens | done — `theme/`, `App.kt`, `AppState.kt`, `HomeScreen`, `SettingsScreen` |
+| 7 | `androidApp` wrapper | done — `MainActivity`, `PermissionsManager`, `MulticastLockManager`, `MorseForegroundService`; APK builds and is signed in CI |
+| 8 | `desktopApp` wrapper | done — `Main`, `TrayManager`, `AutostartManager`, `FirewallDiagnostics`, `DragDropHandler`; `.exe` packages in CI |
+| 9 | Media models, categoriser, date grouping | done, **test-covered** — `MediaModels`, `FileCategorizer`, `DateGrouping`, `MediaLibrary` |
+| 10 | Platform media libraries | done — `MediaLibraryAndroid` (MediaStore), `AppLibraryAndroid` (PackageManager), `ApkExtractor`/`ApkInstaller`, `MediaLibraryDesktop` (filesystem scan) |
+| 11 | Library UI (six tabs) | done — `LibraryScreen.kt` |
+| 12 | Viewers / players | done — `PlayerApi.kt`, `PlayerAndroid` + `AudioPlaybackService` (Media3), `PlayerDesktop` (VLCJ) |
+| 13 | Chat | done — `ChatModels.kt`, `ChatRepo.kt`, `ChatScreen.kt` |
+| 14 | Web Connect | done — `PairingManager`, `WebAssets` (hand-written HTML/CSS/JS), `WebConnectServer` (JDK `HttpServer`) |
+| 15 | Logo, trusted devices, throttling | done — `TrustedDeviceRepo`, `Throttle` |
+| 16 | Packaging | done — release-only signed APK, `.exe`-only desktop installer, GitHub Actions release publishing |
+| 17 | Integration testing | **partial** — see the caveat below |
 
-The test suite (`shared/src/jvmTest/`) covers Phases 1–4: framing byte layout,
-stream reassembly, the RFC 5869 HKDF vectors, ECDH convergence, GCM tamper and
-replay rejection, the full handshake including every rejection path, and an
-end-to-end windowed transfer with injected packet loss.
+Two different words are used above on purpose:
 
-**These tests have never been executed.** They are written against the real
-production classes, not stand-ins, but "written" is not "passing". CI is the
-first run.
+- **test-covered** means an automated JVM test exercises that code. The suite in
+  `shared/src/jvmTest/` covers Phases 1-5 and 9 only: framing byte layout, stream
+  reassembly, the RFC 5869 HKDF vectors, ECDH convergence, GCM tamper and replay
+  rejection, every handshake rejection path, broadcast/room coordination, and an
+  end-to-end windowed transfer with injected packet loss, run against the real
+  production classes rather than stand-ins.
+- **done** means the code compiles and ships in the APK and the installer, which
+  CI proves. It is *not* a claim of correctness: Phases 6-8 and 10-14 have no
+  automated coverage, and none of the platform code has been exercised on a real
+  device or a running Windows install. A two-endpoint test (API 23 emulator plus
+  `desktopApp` on the same PC, per Section 0.2) is still outstanding.
+
+This distinction is the whole of Section 0's "phases must pass their tests
+before later phases begin" rule: Phases 1-5 did, and Phase 6 onwards were only
+started after that. But a green build is not a substitute for Phase 17.
 
 ---
 
 ## Signing the release APK
 
-`assembleDebug` needs no signing config. For a release build, add these
-repository secrets (Settings → Secrets and variables → Actions):
+CI builds **release only** — there is no debug APK job. The job fails fast with
+`MORSECODE_KEYSTORE_BASE64 secret is not set` if the keystore secret is missing,
+so a green Android job means the APK really is signed.
 
-| Secret | Contents |
-|---|---|
-| `MORSECODE_KEYSTORE_BASE64` | `base64 -w0 release.jks` |
-| `MORSECODE_KEYSTORE_PASSWORD` | keystore password |
-| `MORSECODE_KEY_ALIAS` | key alias |
-| `MORSECODE_KEY_PASSWORD` | key password |
+Repository secrets (Settings → Secrets and variables → Actions), with the
+environment variable each one is exported to for `androidApp/build.gradle.kts`:
 
-The keystore itself is `.gitignore`d. Never commit it.
+| Repository secret | Exported as | Contents |
+|---|---|---|
+| `MORSECODE_KEYSTORE_BASE64` | written to `morsecode-release.jks` | `base64 -w0 release.jks` |
+| `MORSECODE_STORE_PASSWORD` | `MORSECODE_KEYSTORE_PASSWORD` | keystore password |
+| `MORSECODE_KEY_ALIAS` | `MORSECODE_KEY_ALIAS` | key alias |
+| `MORSECODE_KEY_PASSWORD` | `MORSECODE_KEY_PASSWORD` | key password |
+
+Note the asymmetry on the second row: the *secret* is
+`MORSECODE_STORE_PASSWORD`, while the *env var* Gradle reads is
+`MORSECODE_KEYSTORE_PASSWORD` — the names do not match, so when rotating the
+keystore password, set the *secret* named `MORSECODE_STORE_PASSWORD`. The keystore file is deleted from the runner in an
+`if: always()` step.
+
+To build a signed APK locally without CI, export the same four `MORSECODE_*`
+variables before running `./gradlew :androidApp:assembleRelease`, or put
+`keystore.path` / `keystore.password` / `keystore.alias` / `keystore.keypassword`
+in a local `gradle.properties`. The keystore itself is `.gitignore`d. Never
+commit it.
 
 ---
 
