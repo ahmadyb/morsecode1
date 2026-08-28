@@ -50,6 +50,10 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+        // :shared uses kotlinx-datetime, whose JVM implementation is built on
+        // java.time — absent below Android API 26. Desugaring backports it so
+        // the minSdk 23 target can call Clock.System.now().
+        isCoreLibraryDesugaringEnabled = true
     }
 
     buildFeatures { compose = true }
@@ -70,6 +74,10 @@ fun extraProp(name: String): String? =
     (rootProject.findProperty(name) as String?) ?: System.getProperty(name)
 
 dependencies {
+    // Must match the version :shared desugars against, or the two copies of the
+    // backported java.time classes collide at dex time.
+    coreLibraryDesugaring(libs.desugar.jdk.libs)
+
     implementation(project(":shared"))
 
     implementation(compose.runtime)

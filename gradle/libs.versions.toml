@@ -9,6 +9,10 @@
 [versions]
 # --- Toolchain (Section 0) ---
 agp = "8.7.2"
+# Core library desugaring. kotlinx-datetime 0.6.1 is implemented on java.time,
+# which Android only ships from API 26; the minSdk 23 target needs it backported
+# or every Clock.System.now() call dies with NoClassDefFoundError.
+desugar = "2.0.4"
 kotlin = "2.0.21"
 compose-multiplatform = "1.7.0"
 
@@ -48,6 +52,7 @@ kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutine
 kotlinx-coroutines-swing = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-swing", version.ref = "coroutines" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serialization" }
 kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "datetime" }
+desugar-jdk-libs = { module = "com.android.tools:desugar_jdk_libs", version.ref = "desugar" }
 
 # SQLDelight — one shared schema, driver supplied per platform
 sqldelight-runtime = { module = "app.cash.sqldelight:runtime", version.ref = "sqldelight" }

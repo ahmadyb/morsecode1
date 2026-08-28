@@ -1,12 +1,17 @@
 package net.morsecode.android
 
+import android.graphics.Typeface
 import android.os.Bundle
 import android.os.Environment
+import android.widget.ScrollView
+import android.widget.TextView
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import java.io.File
+import java.io.PrintWriter
+import java.io.StringWriter
 import net.morsecode.media.createMediaLibrary
 import net.morsecode.media.AppLibraryAndroid
 import net.morsecode.net.DeviceType
@@ -27,17 +32,28 @@ import net.morsecode.ui.theme.MorseCodeTheme
  */
 class MainActivity : ComponentActivity() {
 
-    private val permissions = PermissionsManager(this)
-    private val multicast = MulticastLockManager(this)
+    // Not eager field initialisers: an exception thrown while the Activity is
+    // being constructed happens before onCreate runs, so nothing could catch it
+    // and the app would simply vanish with no explanation on screen.
+    private val permissions by lazy { PermissionsManager(this) }
+    private var multicast: MulticastLockManager? = null
     private val transferService by lazy { MorseForegroundService }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        try {
+            startApp()
+        } catch (t: Throwable) {
+            showCrash(t)
+        }
+    }
+
+    private fun startApp() {
         AndroidAppContext.context = applicationContext
         val app = buildAndroidAppState()
 
         permissions.requestOnLaunch()
-        multicast.acquire()
+        multicast = MulticastLockManager(this).also { it.acquire() }
         transferService.start(this)
 
         setContent {
@@ -49,10 +65,37 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /**
+     * Startup failure screen.
+     *
+     * This app ships no analytics and no crash reporter by design (zero
+     * tracking), so on a device with no adb attached a startup crash is
+     * otherwise invisible — the launcher icon bounces and nothing happens.
+     * Printing the trace on screen, selectable so it can be copied into a bug
+     * report, keeps that diagnosis possible without sending anything anywhere.
+     * The same text is written to app-private storage, which survives the
+     * process death at `/sdcard/Android/data/<pkg>/files/last-crash.txt`.
+     */
+    private fun showCrash(t: Throwable) {
+        val trace = StringWriter().also { t.printStackTrace(PrintWriter(it)) }.toString()
+        runCatching {
+            File(getExternalFilesDir(null) ?: filesDir, "last-crash.txt").writeText(trace)
+        }
+        val traceView = TextView(this).apply {
+            setTextIsSelectable(true)
+            setPadding(32, 48, 32, 32)
+            textSize = 12f
+            typeface = Typeface.MONOSPACE
+            text = "Morse Code could not start.\n\n" +
+                "Long-press to select and copy this trace:\n\n$trace"
+        }
+        setContentView(ScrollView(this).apply { addView(traceView) })
+    }
+
     override fun onDestroy() {
         super.onDestroy()
-        multicast.release()
-        transferService.stop(this)
+        runCatching { multicast?.release() }
+        runCatching { transferService.stop(this) }
     }
 }
 

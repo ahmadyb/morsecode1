@@ -188,6 +188,12 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+        // kotlinx-datetime's JVM implementation — used from commonMain by
+        // DateGrouping, TransferStateRepo, TransferController and the chat and
+        // Web Connect screens — is built on java.time, which Android only
+        // provides from API 26. Without this, a minSdk 23 device throws
+        // NoClassDefFoundError the first time a timestamp is taken.
+        isCoreLibraryDesugaringEnabled = true
     }
 
     // Keeps HDD sync cost down: no lint pass on every library build.
@@ -195,6 +201,13 @@ android {
         abortOnError = false
         checkReleaseBuilds = false
     }
+}
+
+// The desugaring backport must be on the androidTarget's compile classpath too,
+// not only in :androidApp. KMP source sets have no `coreLibraryDesugaring`
+// accessor, so the configuration is referenced by name at project level.
+dependencies {
+    "coreLibraryDesugaring"(libs.desugar.jdk.libs)
 }
 
 // ────────────────────────────────────────────────────────────────────────────

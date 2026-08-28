@@ -2,8 +2,6 @@ package net.morsecode.net
 
 import java.io.File
 import java.io.RandomAccessFile
-import java.nio.file.Files
-import java.nio.file.Paths
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -67,9 +65,13 @@ class FileChunkSink(
     }
 
     override suspend fun hasSpaceFor(bytes: Long): Boolean = withContext(Dispatchers.IO) {
+        // `File.usableSpace` rather than `java.nio.file.Files.getFileStore`:
+        // the NIO file API only exists from Android API 26, and this class is
+        // compiled into the APK for a minSdk 23 target. `usableSpace` is
+        // available on every API level and on the desktop JVM alike.
         runCatching {
-            val store = Files.getFileStore(Paths.get(File(path).parent ?: "."))
-            store.usableSpace > bytes
+            val dir = File(path).parentFile ?: File(".")
+            dir.usableSpace > bytes
         }.getOrDefault(true)
     }
 

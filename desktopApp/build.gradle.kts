@@ -45,6 +45,24 @@ compose.desktop {
             description = "Private, offline device-to-device file transfer."
             vendor = "Morse Code"
 
+            // Bundle the whole JDK instead of the jlink auto-detected subset.
+            //
+            // Detection is static, so it misses modules reached only through
+            // reflection or service loading — and this app depends on exactly
+            // those:
+            //   java.sql       SQLDelight's JdbcSqliteDriver opens connections
+            //                  through java.sql.DriverManager, so the Chat,
+            //                  Library and Settings screens all died with
+            //                  NoClassDefFoundError: java/sql/DriverManager.
+            //   jdk.crypto.ec  the SunEC provider backing ECDH P-256, without
+            //                  which every handshake would fail at runtime.
+            //   jdk.unsupported  sqlite-jdbc touches sun.misc.Unsafe.
+            //   java.naming, java.management, jdk.locale.data  JmDNS and the
+            //                  system tray.
+            // The installer grows by roughly 40 MB; a smaller installer that
+            // cannot open its database is not a trade worth making.
+            includeAllModules = true
+
             windows {
                 menuGroup = "Morse Code"
                 shortcut = true
