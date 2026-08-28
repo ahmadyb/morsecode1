@@ -39,8 +39,9 @@ jobs:
           set +e
           ./gradlew :shared:jvmTest --stacktrace 2>&1 | tee gradle.log
           rc=${PIPESTATUS[0]}
-          grep -A 30 "What went wrong" gradle.log | head -60 | sed 's/^/::error::/'
+          grep -A 30 "What went wrong" gradle.log | head -40 | sed 's/^/::error::/'
           grep '^e: ' gradle.log | head -40 | sed 's/^/::error::/'
+          grep -E "FAILED|AssertionError|ComparisonFailure|expected" gradle.log | head -60 | sed 's/^/::error::/'
           exit $rc
       - name: Upload test report
         if: always()
